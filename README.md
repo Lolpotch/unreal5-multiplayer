@@ -134,13 +134,3 @@ move in the other; press C and watch the colour change on both.
 ```
 
 Or use Live Coding in the editor (`Ctrl+Alt+F11`) after editing code.
-
----
-
-## Next step: Steam / EOS
-
-Everything above stays unchanged. Migrating to real online play means adding the
-`OnlineSubsystemSteam` (or EOS) plugin and a GameInstance that wraps
-`CreateSession` / `FindSessions` / `JoinSession` — replacing the manual `HostLAN` /
-`JoinLAN` IP entry with real session discovery. The replication and RPC code here is
-exactly what a Steam/EOS build would use.

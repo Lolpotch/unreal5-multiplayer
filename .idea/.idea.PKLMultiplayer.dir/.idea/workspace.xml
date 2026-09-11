@@ -7,7 +7,13 @@
     <option name="flavorId" value="CMakePlainProjectFlavor" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0c0f41fc-8ac8-4167-8c26-9da9b95532d8" name="Changes" comment="" />
+    <list default="true" id="0c0f41fc-8ac8-4167-8c26-9da9b95532d8" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/Config/DefaultEngine.ini" beforeDir="false" afterPath="$PROJECT_DIR$/Config/DefaultEngine.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PKLMultiplayer.uproject" beforeDir="false" afterPath="$PROJECT_DIR$/PKLMultiplayer.uproject" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/PKLMultiplayer/PKLMultiplayer.Build.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Source/PKLMultiplayer/PKLMultiplayer.Build.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/PKLMultiplayer/PKLPlayerController.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/PKLMultiplayer/PKLPlayerController.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/PKLMultiplayer/PKLPlayerController.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/PKLMultiplayer/PKLPlayerController.h" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -33,6 +39,7 @@
     <setting file="file://$PROJECT_DIR$/../../../../../Program Files/Epic Games/UE_5.8/Engine/Source/Runtime/Engine/Private/Character.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/../../../../../Program Files/Epic Games/UE_5.8/Engine/Source/Runtime/Engine/Private/Pawn.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/../../../../../Program Files/Epic Games/UE_5.8/Engine/Source/Runtime/Engine/Public/Net/UnrealNetwork.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/PKLMultiplayer/PKLCharacter.cpp" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="Toolset" />

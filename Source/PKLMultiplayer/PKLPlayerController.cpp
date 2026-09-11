@@ -2,6 +2,7 @@
 
 #include "PKLPlayerController.h"
 
+#include "PKLGameInstance.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -58,4 +59,28 @@ void APKLPlayerController::JoinLAN(const FString& IpAddress)
 	}
 
 	ClientTravel(Address, TRAVEL_Absolute);
+}
+
+void APKLPlayerController::Host(bool bLAN)
+{
+	if (UPKLGameInstance* GI = GetGameInstance<UPKLGameInstance>())
+	{
+		GI->HostSession(bLAN);
+	}
+}
+
+void APKLPlayerController::Find(bool bLAN)
+{
+	if (UPKLGameInstance* GI = GetGameInstance<UPKLGameInstance>())
+	{
+		GI->FindAndJoinSession(bLAN);
+	}
+}
+
+void APKLPlayerController::Leave()
+{
+	if (UPKLGameInstance* GI = GetGameInstance<UPKLGameInstance>())
+	{
+		GI->LeaveSession();
+	}
 }

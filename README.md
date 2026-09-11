@@ -1,98 +1,101 @@
 # PKL Multiplayer — LAN C++ Demo
 
-A minimal Unreal Engine 5.8 project that demonstrates online multiplayer in C++.
-It is intentionally tiny: the goal is to *show the networking concepts working*
-(server authority, property replication, RPCs), not to be a game.
+Tiny Unreal Engine 5.8 project. Show multiplayer work in C++.
 
-The same gameplay code is transport-agnostic — moving from LAN to Steam or EOS
-later only means adding a session layer (Create/Find/Join), not rewriting any of this.
+Goal: prove networking concepts. Not a game.
+- server authority
+- property replication
+- RPCs
+
+Same gameplay code transport-agnostic. LAN to Steam/EOS later = add session layer (Create/Find/Join). No rewrite.
 
 ---
 
-## The mental model
+## Mental Model
 
-One machine is the **server** (the authority). Every other machine is a **client**.
-The server owns the truth; clients ask the server to change things, the server decides,
-then the server replicates the result back to everyone so all screens agree.
+- one machine = **server** = boss = truth
+- other machines = **clients**
+- client want change to truth: ask server
+- server decide, change truth, send result to everyone
+- all screens agree
 
-Three engine features carry the whole demo:
+Three engine features do whole demo:
 
-| Feature | Direction | Purpose |
-|---------|-----------|---------|
-| `Replicated` property (`DOREPLIFETIME`) | server → all clients | Sync a value down |
-| Server RPC (`UFUNCTION(Server, ...)`) | client → server | Send a request up |
-| `HasAuthority()` | — | Guard so only the server mutates truth |
+| Feature | Direction | Job |
+|---------|-----------|-----|
+| `Replicated` prop (`DOREPLIFETIME`) | server to clients | sync value down |
+| Server RPC (`UFUNCTION(Server, ...)`) | client to server | send request up |
+| `HasAuthority()` | — | guard: only server change truth |
 
 ---
 
 ## Files
 
-### `PKLGameMode` — the referee (server only)
-- Sets `DefaultPawnClass = APKLCharacter` and `PlayerControllerClass = APKLPlayerController`.
-- Exists only on the server. Clients never have a GameMode.
-- On `PostLogin` (a player connects) the server spawns that player's pawn and
-  offsets each new spawn sideways so players don't stack at the origin.
+### `PKLGameMode` — referee (server only)
+- set `DefaultPawnClass = APKLCharacter`, `PlayerControllerClass = APKLPlayerController`
+- lives on server only. clients no GameMode.
+- `PostLogin` (player connect): server spawn pawn, offset sideways so no stack at origin
 
-### `PKLCharacter` — the replicated pawn
-Two kinds of synchronization live here:
+### `PKLCharacter` — replicated pawn
+Two sync types:
 
-**Movement (automatic).** `bReplicates = true` plus `SetReplicateMovement(true)`
-lets `CharacterMovementComponent` sync position for us — no custom code.
+**Movement (auto).**
+- `bReplicates = true` + `SetReplicateMovement(true)`
+- `CharacterMovementComponent` sync position. no custom code.
 
-**Colour (manual — the teaching part).**
+**Colour (manual — teaching part).**
 ```cpp
 UPROPERTY(ReplicatedUsing = OnRep_BodyColor)
 FLinearColor BodyColor;
 ```
-- `Replicated` tells the engine to copy this value from server to clients.
-- `ReplicatedUsing = OnRep_BodyColor` runs that function on a client whenever the
-  new value arrives, where we repaint the cube.
-- The property must also be registered in `GetLifetimeReplicatedProps` via
-  `DOREPLIFETIME(APKLCharacter, BodyColor)` — without that line it never replicates.
+- `Replicated` = engine copy value server to clients
+- `ReplicatedUsing = OnRep_BodyColor` = run function on client when new value arrive. repaint cube.
+- must register in `GetLifetimeReplicatedProps`: `DOREPLIFETIME(APKLCharacter, BodyColor)`
+- no that line = never replicate
 
-The colour is applied through a **dynamic material instance** created in `BeginPlay`.
-`ApplyBodyColor()` pushes `BodyColor` into the material's `Color` parameter.
-(The cube uses `BasicShapeMaterial`, which exposes that parameter — the default
-`Cube` material is the checkered WorldGridMaterial and has no colour parameter.)
+Colour via **dynamic material instance**, made in `BeginPlay`.
+- `ApplyBodyColor()` push `BodyColor` into material `Color` param
+- cube use `BasicShapeMaterial` (has that param)
+- default `Cube` material = checkered WorldGridMaterial = no colour param
 
-### `PKLPlayerController` — the connection commands
-Open the console with `~` and type:
-- `HostLAN` — become a listen server on the current level (`OpenLevel(..., "listen")`).
-- `JoinLAN 127.0.0.1` — connect to a host by IP (`ClientTravel`).
+### `PKLPlayerController` — connection commands
+Open console `~`, type:
+- `HostLAN` — become listen server on current level (`OpenLevel(..., "listen")`)
+- `JoinLAN 127.0.0.1` — connect to host IP (`ClientTravel`)
 
-`BeginPlay` prints the local role (LISTEN SERVER / CLIENT / STANDALONE) on screen.
-
----
-
-## The colour round-trip (the heart of the demo)
-
-Pressing **C** produces this flow:
-
-```
-client presses C
-  -> OnChangeColorPressed()        // runs locally on the client
-  -> ServerRandomizeColor()        // Server RPC: request travels UP to the server
-       -> BodyColor = random       // server changes the authoritative truth
-       -> ApplyBodyColor()         // server repaints its own view immediately
-  -> replication                   // value travels DOWN to every client
-       -> OnRep_BodyColor()        // each client repaints its cube
-```
-
-A client is not allowed to recolour itself directly; it asks the server. The server
-changes the replicated `BodyColor`, and the engine pushes that to all clients. That is
-why the new colour appears in **every** window — which is the proof that replication works.
+`BeginPlay` print local role on screen: LISTEN SERVER / CLIENT / STANDALONE.
 
 ---
 
-## Who runs what
+## Colour Round-Trip (heart of demo)
 
-| Action | Runs where |
-|--------|-----------|
+Press **C**:
+
+```
+client press C
+  -> OnChangeColorPressed()        // local on client
+  -> ServerRandomizeColor()        // Server RPC: request go UP to server
+       -> BodyColor = random       // server change truth
+       -> ApplyBodyColor()         // server repaint own view now
+  -> replication                   // value go DOWN to every client
+       -> OnRep_BodyColor()        // each client repaint cube
+```
+
+- client not allowed recolour self direct. must ask server.
+- server change replicated `BodyColor`, engine push to all clients
+- new colour appear in **every** window = replication work
+
+---
+
+## Who Runs What
+
+| Action | Where |
+|--------|-------|
 | GameMode / `PostLogin` / pawn spawn | server only |
-| Movement sync | automatic, both directions |
-| `ServerRandomizeColor` | always executes on the server |
+| Movement sync | auto, both ways |
+| `ServerRandomizeColor` | always on server |
 | `OnRep_BodyColor` | clients only |
-| `ApplyBodyColor` (inside the RPC) | server, manually |
+| `ApplyBodyColor` (inside RPC) | server, manual |
 | Input (WASD / C / Space) | local machine first |
 
 ---
@@ -101,31 +104,32 @@ why the new colour appears in **every** window — which is the proof that repli
 
 | Key | Action |
 |-----|--------|
-| W A S D | Move |
-| Mouse | Look |
-| Space | Jump |
-| C | Randomize colour (replicated to all) |
-| `~` then `HostLAN` / `JoinLAN <ip>` | Host / join |
+| W A S D | move |
+| Mouse | look |
+| Space | jump |
+| C | randomize colour (replicated to all) |
+| `~` then `HostLAN` / `JoinLAN <ip>` | host / join |
 
 ---
 
-## Running it
+## Run It
 
-**Single PC (fastest):** Play dropdown → Number of Players = 2,
-Net Mode = *Play As Listen Server* → Play. Two windows appear; move one and watch it
-move in the other; press C and watch the colour change on both.
+**Single PC (fastest):**
+- Play dropdown → Number of Players = 2
+- Net Mode = *Play As Listen Server* → Play
+- two windows. move one, watch other move. press C, colour change both.
 
-**Two builds / two PCs (real LAN):**
-1. Launch two instances (Standalone).
-2. In window 1 console: `HostLAN`
-3. In window 2 console: `JoinLAN <host-LAN-IP>` (same PC: `JoinLAN 127.0.0.1`).
+**Two PCs (real LAN):**
+1. launch two instances (Standalone)
+2. window 1 console: `HostLAN`
+3. window 2 console: `JoinLAN <host-LAN-IP>` (same PC: `JoinLAN 127.0.0.1`)
 
-> The level needs a floor (with collision) and at least one PlayerStart above it,
-> plus a light. Without a floor the pawns fall forever.
+> Level need floor (with collision) + one PlayerStart above it + light.
+> No floor = pawns fall forever.
 
 ---
 
-## Building
+## Build
 
 ```
 "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" ^
@@ -133,122 +137,108 @@ move in the other; press C and watch the colour change on both.
   -Project="<path>\PKLMultiplayer.uproject" -WaitMutex
 ```
 
-Or use Live Coding in the editor (`Ctrl+Alt+F11`) after editing code.
+Or Live Coding in editor (`Ctrl+Alt+F11`) after edit code.
 
 ---
 
-## Packaging a native build (run without the editor)
+## Package Native Build (run without editor)
 
-Package the project so it runs as a standalone `.exe` on any Windows PC.
+Package so it run as standalone `.exe` on any Windows PC.
 
-### From the editor (simplest)
+### From editor (simplest)
+1. open project in UE 5.8
+2. **Platforms → Windows → Build Configuration → Development**
+   - use **Development**, not Shipping
+   - Development keep `~` console alive. `HostLAN` / `JoinLAN` need it.
+   - Shipping kill console (see note below to host/join without it)
+3. **Platforms → Windows → Package Project** → pick output folder
 
-1. Open the project in UE 5.8.
-2. **Platforms → Windows → Build Configuration → Development.**
-   Use **Development**, not Shipping: Development keeps the `~` console alive, which the
-   `HostLAN` / `JoinLAN` commands need. Shipping disables the console (see the note below
-   for how to host/join without it).
-3. **Platforms → Windows → Package Project** and pick an output folder.
-
-### From the command line (equivalent)
-
-Run in PowerShell. Note the leading `&` call operator, and keep it on a single line —
-PowerShell does **not** accept cmd's `^` line-continuation.
+### From command line (same thing)
+Run in PowerShell. Note leading `&` call operator. Keep on one line — PowerShell no accept cmd `^` continuation.
 
 ```powershell
 & "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="C:\Users\Chandra\Documents\Unreal Projects\PKLMultiplayer\PKLMultiplayer.uproject" -noP4 -platform=Win64 -clientconfig=Development -build -cook -allmaps -stage -pak -archive -archivedirectory="C:\Users\Chandra\Documents\Unreal Projects\PKLMultiplayer\Packaged"
 ```
 
 ### Output layout
-
 ```
 <Build>\Windows\PKLMultiplayer.exe                                  <- launcher
-<Build>\Windows\PKLMultiplayer\Binaries\Win64\PKLMultiplayer.exe    <- real binary (binds the network)
+<Build>\Windows\PKLMultiplayer\Binaries\Win64\PKLMultiplayer.exe    <- real binary (bind network)
 ```
 
-Copy the whole `Windows` folder to the other PC; it is self-contained.
+Copy whole `Windows` folder to other PC. Self-contained.
 
 ---
 
-## Running the native build on a LAN
+## Run Native Build on LAN
 
 ### Same PC (quick check)
-
-Launch `PKLMultiplayer.exe` twice. In one, open the console (`~`) and type `HostLAN`;
-in the other, `JoinLAN 127.0.0.1`. This proves the server logic works.
+- launch `PKLMultiplayer.exe` twice
+- one: console `~`, type `HostLAN`
+- other: `JoinLAN 127.0.0.1`
+- proves server logic work
 
 ### Two PCs (real LAN)
+1. both PCs on **same subnet** (e.g. `192.168.1.11`, `192.168.1.12`). no guest Wi-Fi / AP isolation.
+2. host: run `.exe`, console `~`, `HostLAN`. on-screen role must read **LISTEN SERVER**.
+3. client: run `.exe`, console, `JoinLAN <hostIP>` (e.g. `JoinLAN 192.168.1.11`)
 
-1. Both PCs on the **same subnet** (e.g. `192.168.1.11` and `192.168.1.12`), no guest
-   Wi-Fi / AP isolation between them.
-2. Host: run the `.exe`, open console (`~`), type `HostLAN`. Confirm the on-screen role
-   reads **LISTEN SERVER**.
-3. Client: run the `.exe`, console, `JoinLAN <hostIP>` (e.g. `JoinLAN 192.168.1.11`).
-
-**Without the console** (also works in Shipping) — launch with command-line args instead:
-
+**No console** (also work in Shipping) — launch with command-line args:
 ```
 PKLMultiplayer.exe /Game/Level1?listen     (host)
-PKLMultiplayer.exe 192.168.1.11            (client — a bare IP arg auto-connects)
+PKLMultiplayer.exe 192.168.1.11            (client — bare IP arg auto-connect)
 ```
 
-The listen server binds **UDP 7777** by default.
+Listen server bind **UDP 7777** by default.
 
 ---
 
-## Troubleshooting LAN connection
+## Troubleshoot LAN Connection
 
-If the client cannot join, work through it in this order. This is exactly the path that
-fixed it here — a passing `ping` does **not** prove the game port is open (ping is ICMP;
-the game is UDP 7777).
+Client cannot join? Work in this order.
+Passing `ping` does **not** prove game port open (ping = ICMP; game = UDP 7777).
 
 ### 1. Diagnose
-
 ```powershell
 ipconfig                                          # IPv4 of both PCs — must share 192.168.1.x
-ping 192.168.1.11                                 # client -> host reachability
+ping 192.168.1.11                                 # client -> host reach
 netstat -an -p UDP | Select-String 7777           # on host: expect "UDP 0.0.0.0:7777" (listening)
-Get-Process PKLMultiplayer* | Select-Object -ExpandProperty Path -Unique   # find the real exe
-Get-NetFirewallRule -DisplayName "UE LAN 7777"    # confirm the port rule exists
+Get-Process PKLMultiplayer* | Select-Object -ExpandProperty Path -Unique   # find real exe
+Get-NetFirewallRule -DisplayName "UE LAN 7777"    # confirm port rule exist
 ```
 
-### 2. Firewall (run as Administrator on the HOST)
-
-`New-NetFirewallRule` silently does nothing without an elevated (Administrator) PowerShell.
+### 2. Firewall (run as Administrator on HOST)
+`New-NetFirewallRule` silently do nothing without elevated (Administrator) PowerShell.
 
 ```powershell
 # allow ping (ICMP)
 New-NetFirewallRule -DisplayName "Allow ICMP Ping" -Protocol ICMPv4 -IcmpType 8 -Direction Inbound -Action Allow
 
-# allow the game port (UDP 7777)
+# allow game port (UDP 7777)
 New-NetFirewallRule -DisplayName "UE LAN 7777" -Direction Inbound -Protocol UDP -LocalPort 7777 -Action Allow
 
-# allow the two exes per-application (adjust paths to your build)
+# allow two exes per-application (adjust paths to your build)
 New-NetFirewallRule -DisplayName "UE PKL App1" -Direction Inbound -Program "C:\...\Windows\PKLMultiplayer\Binaries\Win64\PKLMultiplayer.exe" -Action Allow -Profile Any
 New-NetFirewallRule -DisplayName "UE PKL App2" -Direction Inbound -Program "C:\...\Windows\PKLMultiplayer.exe" -Action Allow -Profile Any
 ```
 
-### 3. The gotcha: a BLOCK rule beats an ALLOW rule
-
-If you ever dismissed the Windows Firewall pop-up when the game first launched, Windows
-created a per-application **block** rule for the exe. A block rule overrides any port or
-program allow rule, so the connection fails even though everything above looks correct.
-Find and remove it:
+### 3. The Gotcha: BLOCK rule beats ALLOW rule
+- ever dismissed Windows Firewall pop-up on first launch? Windows made per-app **block** rule for the exe.
+- block rule override any port/program allow rule. connection fail even though everything above look correct.
+- find and remove:
 
 ```powershell
-# list any block rules targeting the exe
+# list block rules targeting exe
 Get-NetFirewallRule -Action Block -Enabled True | Get-NetFirewallApplicationFilter | Where-Object Program -match "PKLMultiplayer" | Select-Object Program
 
 # remove them
 Get-NetFirewallRule -Action Block -Enabled True | Where-Object { ($_ | Get-NetFirewallApplicationFilter).Program -match "PKLMultiplayer" } | Remove-NetFirewallRule
 ```
 
-### 4. Confirm the firewall is the culprit
-
-Temporarily disable the firewall on the **host only** and test the join. If it connects,
-the problem is a firewall rule — go back to steps 2–3.
+### 4. Confirm Firewall Is Culprit
+Disable firewall on **host only**, test join. Connect = firewall rule problem, back to steps 2–3.
 
 ```powershell
 Set-NetFirewallProfile -Profile Private -Enabled False   # test with firewall off
-Set-NetFirewallProfile -Profile Private -Enabled True    # MUST turn it back on afterwards
+Set-NetFirewallProfile -Profile Private -Enabled True    # MUST turn back on after
 ```
